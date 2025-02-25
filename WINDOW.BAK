@@ -1,0 +1,14 @@
+#include <stdlib.h>
+#include <PROJECT/WINDOW.H>
+#include <alloc.h>
+
+window_t * create_window(char* name, int startx, int endx, int starty, int endy, int attrib){
+    window_t * w = malloc(sizeof(window_t));
+    w->startx = startx;
+    w->starty = starty;
+    w->endx = endx;
+    w->endy = endy;
+    w->attrib = attrib;
+    strcpy(w->name, name);
+    return w;
+}
