@@ -101,15 +101,26 @@ void window_xy(window_t* w, int x, int y){
 	goto_xy(w->startx + x + 1, w->starty + y + 1);
 }
 
+int window_getkey() {
+	union KEY {
+		char ascii, scancode;
+		int code;
+	};
+	union KEY k;
+	k.code = get_key();
+	if(k.ascii == 0) {
+		return k.scancode + 0x100;
+	}
+	else {
+		return k.ascii;
+	}
+}
+
 void move_cursor_next(window_t* w){
 	cursor_y += 1;
 	if (cursor_y > w->endy - 1){
 		cursor_x += 1;
 		cursor_y = w->starty + 1;
-		if (cursor_x > w->endx - 1){
-			cursor_x = w->startx + 1;
-			cursor_y = w->starty + 1;
-		}
 	}
 	goto_xy(cursor_x, cursor_y);
 }
@@ -146,7 +157,7 @@ void window_putstr(window_t* w, char* s) {
 char* window_gets(window_t* w, char* s, int len){
 	int key = window_getkey();
 	int i = get_length(s);
-	while (key != CR && key != F10 && i < len){
+	while (key != CR && key != F10){
 		if (key == BKSP){
 			move_cursor_before(w);
 			window_putchar(w, ' ');
@@ -157,11 +168,13 @@ char* window_gets(window_t* w, char* s, int len){
 			continue;
 		}
 		else{
-			window_putchar(w, key);
+			if (i < len){
+				window_putchar(w, key);
+				s[i] = key;
+				i++;
+			} 
 		}
-		s[i] = key;
 		key = window_getkey();
-		i++;
 	}
 	s[i] = 0;
 	close_window(w);

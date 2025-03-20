@@ -324,21 +324,6 @@ int get_key() {
 	return getch();
 	*/
 }
-
-int window_getkey() {
-	union KEY {
-		char ascii, scancode;
-		int code;
-	};
-	union KEY k;
-	k.code = get_key();
-	if(k.ascii == 0) {
-		return k.scancode + 0x100;
-	}
-	else {
-		return k.ascii;
-	}
-}
 void goto_xy(int x, int y) {
 	_AH = 0x02;
 	_DH = x;
