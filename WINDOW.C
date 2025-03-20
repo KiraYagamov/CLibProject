@@ -13,13 +13,10 @@ endy --- 0 - 79 (endy > starty) (конечный номер столбца)
 char* create_buffer(int startx, int starty, int endx, int endy){
 	char *p;
     int size = (endx-startx+1)*(endy-starty+1)*2*sizeof(char);
-    if (startx < 0 || startx > 24 || starty < 0 || starty > 79 ||
-		endx < 0 || endx > 24 || endy < 0 || endy > 79){
-		fprintf(stderr, "Error create_buffer 1");
-		exit(1);
-	}
+	CheckCoords(startx, starty);
+	CheckCoords(endx, endy);
     p = malloc(size);
-    if( !p ) {
+    if(!p) {
         fprintf(stderr, "Error create_buffer 2");
         exit(1);
     }
@@ -37,8 +34,9 @@ endy --- 0 - 79 (endy > starty) (конечный номер столбца)
 */
 window_t * create_window(char* name, int startx, int endx, int starty, int endy, int attrib){
 	window_t * w = malloc(sizeof(window_t));
-    if (startx < 0 || startx > 24 || starty < 0 || starty > 79 ||
-		endx < 0 || endx > 24 || endy < 0 || endy > 79 || !w){
+	CheckCoords(startx, starty);
+	CheckCoords(endx, endy);
+    if (!w){
 		fprintf(stderr, "Error create_window");
 		exit(1);
 	}
@@ -93,4 +91,88 @@ void switch_windows(window_t *w1, window_t *w2){
 	close_window(w1);
 	open_window(w2);
 	open_window(w1);
+}
+
+void window_xy(window_t* w, int x, int y){
+	CheckCoordsWithBorders(w->startx + x + 1, w->starty + y + 1, w->startx-1, w->endx-1, w->starty-1, w->endy-1);
+	if (w->isActive == 0) {
+		return;
+	}
+	goto_xy(w->startx + x + 1, w->starty + y + 1);
+}
+
+void move_cursor_next(window_t* w){
+	cursor_y += 1;
+	if (cursor_y > w->endy - 1){
+		cursor_x += 1;
+		cursor_y = w->starty + 1;
+		if (cursor_x > w->endx - 1){
+			cursor_x = w->startx + 1;
+			cursor_y = w->starty + 1;
+		}
+	}
+	goto_xy(cursor_x, cursor_y);
+}
+
+void move_cursor_before(window_t* w){
+	cursor_y -= 1;
+	if (cursor_y <= w->starty){
+		cursor_x -= 1;
+		if (cursor_x <= w->startx){
+			cursor_y += 1;
+			cursor_x += 1;
+			goto_xy(cursor_x, cursor_y);
+			return;
+		}
+		cursor_y = w->endy - 1;
+	}
+	goto_xy(cursor_x, cursor_y);
+}
+
+void window_putchar(window_t* w, char ch) {
+	CheckCoordsWithBorders(cursor_x, cursor_y, w->startx-1, w->endx-1, w->starty-1, w->endy-1);
+	write_char(cursor_x, cursor_y, ch, w->attrib);
+	move_cursor_next(w);
+}
+
+void window_putstr(window_t* w, char* s) {
+	int len = get_length(s);
+	int i = 0;
+	for (i = 0; i < len; i++){
+		window_putchar(w, s[i]);
+	}
+}
+
+char* window_gets(window_t* w, char* s, int len){
+	int key = window_getkey();
+	int i = get_length(s);
+	while (key != CR && key != F10 && i < len){
+		if (key == BKSP){
+			move_cursor_before(w);
+			window_putchar(w, ' ');
+			move_cursor_before(w);
+			i--;
+			s[i] = ' ';
+			key = window_getkey();
+			continue;
+		}
+		else{
+			window_putchar(w, key);
+		}
+		s[i] = key;
+		key = window_getkey();
+		i++;
+	}
+	s[i] = 0;
+	close_window(w);
+	return s;
+}
+
+void write_data(window_t* w, char* s) {
+	int length = get_length(s);
+	int i = 0;
+	window_xy(w, 0, 0);
+	for (i = 0; i < length; i++) {
+		window_putchar(w, s[i]);
+	}
 }

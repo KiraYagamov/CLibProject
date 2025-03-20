@@ -4,8 +4,30 @@
 #include <alloc.h>
 #include <DOS.H>
 
+#define DEBUG 1
 
-vector2_t* cursor;
+#define CheckCoords(x, y) if (x < 0 || x > 24 || y < 0 || y > 79) { \
+	if (DEBUG){ \
+		goto_xy(22, 0); \
+		printf("Error!\nFile: %s\nLine: %d", __FILE__, __LINE__); \
+		getch(); \
+	} \
+	exit(1); \
+}
+#define CheckCoordsWithBorders(x, y, minX, maxX, minY, maxY) \
+if (x < minX || x > maxX || y < minY || y > maxY) { \
+	if (DEBUG){ \
+		goto_xy(22, 0); \
+		printf("Error!\nFile: %s\nLine: %d", __FILE__, __LINE__); \
+		getch(); \
+	} \
+	exit(1); \
+}
+
+void goto_xy(int x, int y);
+
+int cursor_x = 0;
+int cursor_y = 0;
 
 /*
 str - указатель на массив char, длину которого необходимо узнать
@@ -26,10 +48,6 @@ v - указатель на начало видеопамяти, сдвигае�
 */
 void write_char(int x, int y, char ch, char attrib) {
 	char far *v = (char far*) BASEMEM;
-	if (x < 0 || x > 24 || y < 0 || y > 79){
-		fprintf(stderr, "Error write_char");
-		exit(1);
-	}
 	v += x*160 + y*2;
 	*(v++) = ch;
 	*v = attrib;
@@ -47,10 +65,8 @@ lastY - координата y последнего символа выводи�
 void write_string(int x, int y, char *string, char attrib) {
 	int i = 0;
 	int lastY = y + get_length(string);
-	if (x < 0 || x > 24 || y < 0 || lastY > 79){
-		fprintf(stderr, "Error write_string");
-		exit(1);
-	}
+	CheckCoords(x, y);
+	CheckCoords(x, lastY);
 	for (i = 0; string[i]; i++){
 		write_char(x, y + i , string[i], attrib);
 	}
@@ -156,11 +172,8 @@ buffer - указатель на массив для заполнения его
 */
 void put_vmem(int startx, int starty, int endx, int endy, char*buffer) {
 	int i = startx, j = starty, k = 0;
-	if (startx < 0 || startx > 24 || starty < 0 || starty > 79 ||
-		endx < 0 || endx > 24 || endy < 0 || endy > 79){
-		fprintf(stderr, "Error put_vmem");
-		exit(1);
-	}
+	CheckCoords(startx, starty);
+	CheckCoords(endx, endy);
 	for (i = startx; i <= endx; i++){
 		for(j = starty; j <= endy; j++){
 			write_char(i, j, buffer[k++], buffer[k+1]);
@@ -181,11 +194,8 @@ attrib - любые 8 бит (аттрибут для вывода (цвета �
 */
 void clear(int startx, int starty, int endx, int endy, char ch, char attrib) {
 	int i = 0, j = 0;
-	if (startx < 0 || startx > 24 || starty < 0 || starty > 79 ||
-		endx < 0 || endx > 24 || endy < 0 || endy > 79){
-		fprintf(stderr, "Error Clear");
-		exit(1);
-	}
+	CheckCoords(startx, starty);
+	CheckCoords(endx, endy);
 	for (i = startx; i <= endx; i++){
 		for (j = starty; j <= endy; j++) {
 			write_char(i, j, ch, attrib);
@@ -216,11 +226,8 @@ void border(int startx, int starty, int endx, int endy, char attrib, int typ){
 	char horizontal_border = 0xC4, vertical_border = 0xB3;
 	char up_left_angle = 0xDA, up_right_angle = 0xBF;
 	char down_left_angle = 0xC0, down_right_angle = 0xD9;
-	if (startx < 0 || startx > 24 || starty < 0 || starty > 79 ||
-		endx < 0 || endx > 24 || endy < 0 || endy > 79){
-		fprintf(stderr, "Error Border");
-		exit(1);
-	}
+	CheckCoords(startx, starty);
+	CheckCoords(endx, endy);
 	if (typ == 0){
 		horizontal_border = 0xC4;
 		vertical_border = 0xB3;
@@ -291,10 +298,8 @@ void name(int startx, int starty, int endy, char*str, char attrib) {
 	resultStr[i] = '\0';
 	
 	y = starty + (endy-starty-strLength)/2 + 1;
-	if (startx < 0 || startx > 24 || starty < 0 || starty > 79 || endy < 0 || endy > 79){
-		fprintf(stderr, "Error name 2");
-		exit(1);
-	}
+	CheckCoords(startx, starty);
+	CheckCoords(startx, endy);
 	write_string(startx, y, resultStr, attrib);
 }
 
@@ -340,92 +345,7 @@ void goto_xy(int x, int y) {
 	_DL = y;
 	_BH = 0x00;
 	geninterrupt(0x10);
-	if (!cursor) cursor = (vector2_t*) malloc(sizeof(vector2_t));
-	cursor->x = x;
-	cursor->y = y;
+	cursor_x = x;
+	cursor_y = y;
 }
 
-void window_xy(window_t* w, int x, int y){
-	if (w->startx + x + 1 <= w->startx || w->startx + x + 1 > w->endx - 1 ||
-		w->starty + y + 1 <= w->starty || w->starty + y + 1 > w->endy - 1 ||
-		w->isActive == 0) {
-			return;
-	}
-	goto_xy(w->startx + x + 1, w->starty + y + 1);
-}
-
-vector2_t* get_cursor() {
-	vector2_t* vector = (vector2_t*) malloc(sizeof(vector2_t));
-	vector->x = _DL;
-	vector->y = _DH;
-	return vector;
-}
-
-void move_cursor_next(window_t* w){
-	cursor->y += 1;
-	if (cursor->y > w->endy - 1){
-		cursor->x += 1;
-		cursor->y = w->starty + 1;
-		if (cursor->x > w->endx - 1){
-			cursor->x = w->startx + 1;
-			cursor->y = w->starty + 1;
-		}
-	}
-	goto_xy(cursor->x, cursor->y);
-}
-
-void move_cursor_before(window_t* w){
-	cursor->y -= 1;
-	if (cursor->y <= w->starty){
-		cursor->x -= 1;
-		if (cursor->x <= w->startx){
-			cursor->y += 1;
-			cursor->x += 1;
-			goto_xy(cursor->x, cursor->y);
-			return;
-		}
-		cursor->y = w->endy - 1;
-	}
-	goto_xy(cursor->x, cursor->y);
-}
-
-void window_putchar(window_t* w, char ch) {
-	if (cursor->x <= w->startx || cursor->x > w->endx - 1 ||
-		cursor->y <= w->starty || cursor->y > w->endy - 1 || 
-		w->isActive == 0){
-			printf("Error putchar\nData: x: %d, y: %d", cursor->x, cursor->y);
-			return;
-	}
-	write_char(cursor->x, cursor->y, ch, w->attrib);
-	move_cursor_next(w);
-}
-
-void window_putstr(window_t* w, char* s) {
-	int len = get_length(s);
-	int i = 0;
-	for (i = 0; i < len; i++){
-		window_putchar(w, s[i]);
-	}
-}
-
-void window_gets(window_t* w, char* s, int len){
-	int key = window_getkey();
-	int i = 0;
-	while (key != CR && key != F10 && i <= len){
-		if (key == BKSP){
-			move_cursor_before(w);
-			window_putchar(w, ' ');
-			move_cursor_before(w);
-			i--;
-			s[i] = key;
-			key = window_getkey();
-			continue;
-		}
-		else{
-			window_putchar(w, key);
-		}
-		s[i] = key;
-		key = window_getkey();
-		i++;
-	}
-}

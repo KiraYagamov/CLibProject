@@ -32,14 +32,17 @@ int main() {
 	*/
 
 	window_t *w1;
+	char* data;
 	desktop();
 	getch();
-
-	w1 = create_window("Bomes", 5, 15, 5, 35, BLACK | BGLIGHTGRAY);
+	w1 = create_window("BoNotes", 5, 15, 5, 35, BLACK | BGLIGHTGRAY);
 	open_window(w1);
-	getch();
 	window_xy(w1, 0, 0);
-	getch();
-	window_gets(w1, w1->buffer, w1->buffer_size);
+	data = window_gets(w1, w1->buffer, w1->buffer_size);
+	while (window_getkey() == ESC) {
+		open_window(w1);
+		write_data(w1, data);
+		data = window_gets(w1, w1->buffer, w1->buffer_size);
+	}
 	return 0;
 }

@@ -58,8 +58,3 @@
 #define BKSP 0x08
 #define CR 0x0D
 #define ESC 0x1B
-
-typedef struct vector2
-{
-    int x, y;
-} vector2_t;

@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "BASE.C": "cpp",
+        "MAIN.C": "cpp",
+        "WINDOW.C": "cpp"
+    }
+}
